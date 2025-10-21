@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Click Clash</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        background: #f3f4f6;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 1rem;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 1rem;
+      }
+      .players {
+        display: flex;
+        gap: 1rem;
+      }
+      .player {
+        flex: 1;
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+        text-align: center;
+      }
+      .count {
+        font-size: 3.5rem;
+        color: #111827;
+      }
+      .target {
+        margin-top: 0.5rem;
+        color: #6b7280;
+      }
+      .controls {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+      }
+      .admin {
+        margin-top: 1.25rem;
+        background: #fff;
+        padding: 1rem;
+        border-radius: 8px;
+      }
+      button {
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        background: #fff;
+      }
+      .winner {
+        margin-top: 1rem;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #059669;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Click Clash</h1>
+        <p>El primero en llegar al objetivo gana.</p>
+      </header>
+
+      <div class="players">
+        <div class="player" id="p1">
+          <h2>Player 1</h2>
+          <div class="count" id="count-p1">0</div>
+          <div class="target" id="progress-p1"></div>
+          <div class="controls">
+            <button id="sim-p1">Simular press P1</button>
+          </div>
+        </div>
+
+        <div class="player" id="p2">
+          <h2>Player 2</h2>
+          <div class="count" id="count-p2">0</div>
+          <div class="target" id="progress-p2"></div>
+          <div class="controls">
+            <button id="sim-p2">Simular press P2</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin">
+        <div
+          style="
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+          "
+        >
+          <label>Objetivo:</label>
+          <input
+            id="target"
+            type="number"
+            value="10"
+            style="
+              width: 80px;
+              padding: 6px;
+              border-radius: 6px;
+              border: 1px solid #ddd;
+            "
+          />
+          <button id="set-target">Set</button>
+          <button id="start">Start</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="winner" id="winner"></div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      const els = {
+        p1: document.getElementById("count-p1"),
+        p2: document.getElementById("count-p2"),
+        winner: document.getElementById("winner"),
+        target: document.getElementById("target"),
+      };
+
+      function renderState(state) {
+        const pMap = {};
+        state.players.forEach((p) => (pMap[p.id] = p));
+
+        els.p1.textContent = (pMap.p1 && pMap.p1.count) || 0;
+        els.p2.textContent = (pMap.p2 && pMap.p2.count) || 0;
+        els.winner.textContent = state.winner ? `Ganador: ${state.winner}` : "";
+        els.target.value = state.target;
+      }
+
+      socket.on("game:state", (s) => renderState(s));
+      socket.on("player:update", (u) => {
+        const el = document.getElementById("count-" + u.id);
+        if (el) el.textContent = u.count;
+      });
+      socket.on("game:win", (w) => {
+        document.getElementById("winner").textContent = `Ganador: ${w.winner}`;
+      });
+
+      document
+        .getElementById("start")
+        .addEventListener("click", () => socket.emit("game:start"));
+      document
+        .getElementById("reset")
+        .addEventListener("click", () => socket.emit("game:reset"));
+      document.getElementById("set-target").addEventListener("click", () => {
+        const n = Number(document.getElementById("target").value) || 10;
+        socket.emit("game:setTarget", n);
+      });
+
+      document
+        .getElementById("sim-p1")
+        .addEventListener("click", () => socket.emit("simulate:press", "p1"));
+      document
+        .getElementById("sim-p2")
+        .addEventListener("click", () => socket.emit("simulate:press", "p2"));
+    </script>
+  </body>
+</html>
